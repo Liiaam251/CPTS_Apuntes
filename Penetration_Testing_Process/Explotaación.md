@@ -41,4 +41,23 @@ En este ejemplo se prioriza el ataque de **Inclusión remota de archivos** por s
 - Si el PoC disponible no es fiable o completo, **replicar el entorno objetivo** en una máquina virtual local con la misma versión de sistemas y servicios.  
 - Ajustar, compilar y probar el exploit en este entorno controlado antes de usarlo contra el objetivo real.  
 - Confirmar que el exploit no produce efectos colaterales significativos.  
-- En casos de configuraciones o vulnerabilidades conocidas, usar herramientas fiables que ya se consideren es
+- En casos de configuraciones o vulnerabilidades conocidas, usar herramientas fiables que ya se consideren estables y seguras.
+
+## 6. Comunicación y validación con el cliente
+- Ante dudas sobre el riesgo de un ataque, **consultar siempre con el cliente** antes de ejecutarlo.  
+- Proporcionar detalles técnicos y posibles impactos para que el cliente tome una decisión informada.  
+- Si el cliente decide no autorizar la explotación, documentar el hallazgo como **no confirmado activamente** pero marcarlo como problema a corregir.  
+- La transparencia y la trazabilidad son esenciales para evitar interrupciones imprevistas.
+
+## 7. Buenas prácticas
+- Mantener un **registro detallado de todas las acciones** realizadas (para informes y trazabilidad).  
+- Priorizar la **seguridad y estabilidad** de los sistemas del cliente.  
+- Utilizar conexiones cifradas para shells inversos y evitar exposición innecesaria.  
+- Evitar ataques destructivos o que provoquen denegación de servicio.  
+- Verificar exploits en entornos controlados antes de lanzarlos en producción.  
+
+## 8. Transición a las siguientes fases
+Una vez logrado el acceso inicial:
+- Confirmar y documentar la explotación exitosa.  
+- Pasar a **Post-explotación** (para recopilar más información y elevar privilegios).  
+- Continuar con **Movimiento lateral** si el objetivo lo requiere.  
