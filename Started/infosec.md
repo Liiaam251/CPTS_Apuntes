@@ -77,4 +77,3 @@ Para iniciarse en Infosec y Pentesting:
 - Usar **plataformas de entrenamiento** (como Hack The Box, TryHackMe) y laboratorios controlados.
 - Desarrollar habilidades en **documentación, reporting y comunicación** además de la parte técnica.
 
-> Aunque las plataformas de aprendizaje emplean máquinas deliberadamente vulnerables, las **habilidades ad
