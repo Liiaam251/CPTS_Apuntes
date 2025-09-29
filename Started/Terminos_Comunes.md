@@ -92,11 +92,4 @@ Estas categorías sirven como **punto de partida** para metodologías de auditor
 
 ---
 
-## 5. Conclusión
 
-Familiarizarse con estos **términos fundamentales (Shells, Puertos, Servidores Web, OWASP Top 10)** es imprescindible para:
-- Comprender la superficie de ataque de redes y aplicaciones.
-- Priorizar correctamente la enumeración y explotación.
-- Ejecutar pruebas de penetración con eficacia y precisión técnica.
-
-El dominio de estos conceptos será ampliado en módulos posteriores sobre explotación práctica, post-explotación y reporting.
