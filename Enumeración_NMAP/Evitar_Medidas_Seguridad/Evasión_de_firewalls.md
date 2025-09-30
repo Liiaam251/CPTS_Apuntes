@@ -1,4 +1,8 @@
 # Evasión de Firewalls e IDS/IPS con Nmap
+````
+sudo nmap -sS -sV -A -p- -T4 -Pn --source-port 53 --disable-arp-ping <IP_objetivo>
+
+````
 
 Nmap ofrece diversas técnicas para **evadir firewalls y sistemas IDS/IPS** durante los escaneos.  
 Las más utilizadas incluyen **escaneos ACK**, **uso de señuelos (decoys)**, **cambio de IP de origen** y **escaneos desde puertos de confianza (como el 53 DNS)**.
