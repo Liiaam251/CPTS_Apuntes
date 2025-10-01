@@ -2,6 +2,8 @@
 ````
 sudo nmap -sS -sV -A -p- -T4 -Pn --source-port 53 --disable-arp-ping <IP_objetivo>
 
+sudo nmap -sV -p10001 -Pn -T2 --max-retries 1 --min-rate 1 <ip>
+
 ````
 
 Nmap ofrece diversas técnicas para **evadir firewalls y sistemas IDS/IPS** durante los escaneos.  
