@@ -1,167 +1,180 @@
-# Apuntes: DNS (Domain Name System)
+# 📝 Apuntes de DNS para CTF
 
-## 1) Conceptos clave
-- **DNS** traduce nombres de dominio ↔ direcciones IP (sin base de datos central; arquitectura distribuida).
-- Permite ubicar servicios (web, correo, etc.) asociados a un dominio.
-- El tráfico DNS **normalmente no va cifrado**. Alternativas: **DoT**, **DoH** y **DNSCrypt**.
+## 1. ¿Qué es DNS?
+- **DNS (Domain Name System)** traduce **nombres de dominio** (por ej. `www.inlanefreight.htb`) en **direcciones IP** (por ej. `10.129.10.5`).
+- Se comporta como una **“guía telefónica” de Internet**.
+- En un entorno corporativo o en los **CTF**, el DNS suele contener **información interna** que **no siempre es visible en la web**.
 
----
-
-## 2) Tipos de servidores DNS
-| Tipo | Descripción breve |
-|-----|--------------------|
-| **Root Server** | Gestionan TLDs. 13 identidades lógicas coordinadas por **ICANN**. Último recurso en la recursión. |
-| **Authoritative** | Autoridad de una **zona**. Respuestas vinculantes solo de su ámbito. |
-| **Non‑authoritative** | No tienen autoridad; responden usando caché o consultas recursivas/iterativas. |
-| **Caching** | Guardan respuestas durante el **TTL** indicado por el autoritativo. |
-| **Forwarder** | Reenvía consultas a otros DNS. |
-| **Resolver** | Realiza la resolución **local** (equipo/routers). |
+👉 Para un atacante, **enumerar DNS** sirve para descubrir:
+- **Subdominios** (p. ej.: `mail.inlanefreight.htb`, `dev.inlanefreight.htb`).
+- **Servicios internos** ocultos.
+- **Registros TXT** (a menudo usados para flags en los CTF).
+- **Infraestructura interna** (por ej., servidores de correo, app servers, etc.).
 
 ---
 
-## 3) Jerarquía y nomenclatura
-- Raíz `.` → **TLDs** (`.com`, `.org`, `.io`, …) → **2º nivel** (`inlanefreight.com`) → **subdominios** (`dev.inlanefreight.com`) → **hosts** (`ws01.dev.inlanefreight.com`).
+## 2. Tipos de registros DNS importantes
+| Registro | Descripción | Relevancia en CTF |
+|----------|-------------|-------------------|
+| **A**    | Asocia un dominio a una **IP IPv4**. | Permite encontrar hosts y servicios. |
+| **NS**   | Indica los **Name Servers** (servidores DNS). | Sirve para descubrir otros servidores autoritativos. |
+| **MX**   | Servidores de correo del dominio. | A veces exponen hosts internos. |
+| **TXT**  | Contiene texto libre. | Muchos **CTF esconden las flags aquí**. |
+| **CNAME**| Alias de otro nombre de dominio. | Útil para encontrar dominios alternativos. |
+| **PTR**  | Búsqueda inversa (IP → nombre). | Útil para mapear redes internas. |
+| **SOA**  | Información administrativa del dominio. | Sirve para confirmar autoridad del DNS. |
 
 ---
 
-## 4) Registros DNS fundamentales
-| Registro | ¿Para qué sirve? |
-|---------|-------------------|
-| **A** | IPv4 de un nombre. |
-| **AAAA** | IPv6 de un nombre. |
-| **MX** | Servidores de correo para el dominio. |
-| **NS** | Nameservers autoritativos de la zona. |
-| **TXT** | Información arbitraria (SPF, DMARC, validaciones, etc.). |
-| **CNAME** | Alias de otro nombre (p. ej. `www` → `@`). |
-| **PTR** | Búsqueda inversa: IP → nombre. |
-| **SOA** | Datos de la zona: responsable, serie, timers (refresh/retry/expire/minimum). |
-
-**Nota SOA:** en el correo del responsable el punto `.` se lee como `@`.  
-Ej.: `awsdns-hostmaster.amazon.com.` ⇒ `awsdns-hostmaster@amazon.com`.
+## 3. Por qué el DNS es clave en los CTF
+- Los **admins de CTF suelen esconder pistas** o **flags** en el DNS porque:
+  - Es **fácil de pasar por alto**.
+  - Permite mostrar **infraestructura interna realista** (por ejemplo: `internal.inlanefreight.htb`).
+- Muchas veces, **enumerar DNS → descubrir subdominios → encontrar servicios/flags**.
 
 ---
 
-## 5) Herramientas de consulta rápidas
+## 4. Comandos básicos con `dig`
+
+### 4.1 Consultar un registro A
 ```bash
-# SOA de un nombre
-dig soa www.inlanefreight.com
-
-# Nameservers de una zona preguntando a un DNS concreto
-dig ns inlanefreight.htb @10.129.14.128
-
-# Ver (cuando el servidor lo permite) registros variados
-dig any inlanefreight.htb @10.129.14.128
-
-# Consultar versión (si expuesta) - clase CHAOS
-dig CH TXT version.bind 10.129.120.85
+dig @<IP_DNS> <dominio> +short
 ```
+- Traduce el dominio a su IP.
 
 ---
 
-## 6) Bind9 – archivos y estructura
-**Ficheros locales típicos**
-- `/etc/bind/named.conf.local`
-- `/etc/bind/named.conf.options`
-- `/etc/bind/named.conf.log` (opcional)
-
-**Ejemplo `named.conf.local`**
-```conf
-zone "domain.com" {
-    type master;
-    file "/etc/bind/db.domain.com";
-    allow-update { key rndc-key; };
-};
-```
-
-### 6.1) Archivo de **zona directa** (forward)
-Debe contener **1 SOA**, ≥ **1 NS** y los RR necesarios.
-```zone
-$ORIGIN domain.com.
-$TTL 86400
-@   IN SOA dns1.domain.com. hostmaster.domain.com. (
-        2001062501  ; serial
-        21600       ; refresh
-        3600        ; retry
-        604800      ; expire
-        86400 )     ; minimum
-
-    IN NS  ns1.domain.com.
-    IN NS  ns2.domain.com.
-    IN MX  10 mx.domain.com.
-    IN MX  20 mx2.domain.com.
-    IN A   10.129.14.5
-
-server1  IN A 10.129.14.5
-server2  IN A 10.129.14.7
-ns1      IN A 10.129.14.2
-ns2      IN A 10.129.14.3
-ftp      IN CNAME server1
-mx       IN CNAME server1
-mx2      IN CNAME server2
-www      IN CNAME server2
-```
-
-### 6.2) **Zona inversa** (reverse) – PTR
-Traduce IP → FQDN.
-```zone
-$ORIGIN 14.129.10.in-addr.arpa.
-$TTL 86400
-@   IN SOA dns1.domain.com. hostmaster.domain.com. (
-        2001062501 21600 3600 604800 86400 )
-    IN NS ns1.domain.com.
-    IN NS ns2.domain.com.
-
-5   IN PTR server1.domain.com.
-```
-
----
-
-## 7) Opciones críticas y superficie de ataque
-| Opción (Bind) | Riesgo / uso |
-|---------------|--------------|
-| `allow-query` | Define quién puede consultar. |
-| `allow-recursion` | Limita recursión (evita resolvers abiertos). |
-| `allow-transfer` | **Controla AXFR**; restringir por IP/TSIG. |
-| `zone-statistics` | Métricas de zona. |
-
-**Buenas prácticas**
-- Restringir **recursión** a redes internas.
-- Bloquear **AXFR** salvo IPs de secundarios y/o usar **TSIG**.
-- No exponer `version.bind` ni `ANY` con respuestas completas.
-- Usar **DoT/DoH** cuando proceda y registrar auditorías.
-
----
-
-## 8) Huella y enumeración
-### 8.1) Puertos y servicios
-- UDP/TCP **53** (DNS)
-- Descubrimiento básico + NSE para RPC/NFS (contexto comparativo):
+### 4.2 Ver los servidores NS
 ```bash
-sudo nmap -sU -sT -p53 -sV 10.129.14.128
+dig @<IP_DNS> NS <dominio>
 ```
+- Muestra los servidores de nombres autoritativos.
 
-### 8.2) Transferencia de zona (AXFR) – *solo si está mal configurado*
+---
+
+### 4.3 Consultar **cualquier tipo** de registro
 ```bash
-dig axfr inlanefreight.htb @10.129.14.128
-dig axfr internal.inlanefreight.htb @10.129.14.128
+dig @<IP_DNS> ANY <dominio>
 ```
+- A veces muestra **TXT, A, MX, SOA…** todo lo que el servidor permita.
 
-### 8.3) Fuerza bruta de subdominios
+---
+
+### 4.4 Transferencia de zona (**AXFR**)
 ```bash
-for sub in $(cat /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt); do
-  dig +short "$sub.inlanefreight.htb" @10.129.14.128 | sed -r '/^\s*$/d'   && echo "$sub" >> subdomains.txt
-done
-# Alternativa con dnsenum
-dnsenum --dnsserver 10.129.14.128 --enum -p 0 -s 0   -o subdomains.txt   -f /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt   inlanefreight.htb
+dig @<IP_DNS> AXFR <dominio>
+```
+- 🔑 **El más importante en CTF**: descarga **todos los registros del dominio** si el servidor no está bien configurado.
+- Es la forma más rápida de encontrar:
+  - **Subdominios ocultos**
+  - **Registros TXT con flags**
+  - IPs internas.
+
+---
+
+### 4.5 Buscar registros TXT (flag típica)
+```bash
+dig @<IP_DNS> TXT <dominio>
+```
+- Útil cuando ya sabes que hay un TXT (por ejemplo, la flag `HTB{...}`).
+
+---
+
+### 4.6 Buscar registros específicos (ejemplo: MX, SOA)
+```bash
+dig @<IP_DNS> MX <dominio>
+dig @<IP_DNS> SOA <dominio>
 ```
 
 ---
 
-## 9) Resumen operativo
-1. **Identifica** tipo de consulta y servidor (autoridad, recursivo o caché).  
-2. **Consulta** registros clave (NS, SOA, MX, A/AAAA, TXT).  
-3. **Enumera** subdominios y prueba **AXFR** solo si está permitido.  
-4. **Endurece** Bind9: `allow-{query,recursion,transfer}`, TSIG y mínima exposición.  
-5. **Cifra** (DoT/DoH) cuando aplique y monitoriza logs.
+## 5. Herramienta de enumeración DNS: `dnsenum`
+```bash
+dnsenum --dnsserver 10.129.210.242 --enum -p 0 -s 0 -o subdomains.txt -f subdomains-top1million-110000.txt inlanefreight.htb
+```
+- **`--dnsserver`** → IP del servidor DNS objetivo.  
+- **`--enum`** → realiza una enumeración completa.  
+- **`-p 0` y `-s 0`** → controla la profundidad de la enumeración.  
+- **`-o subdomains.txt`** → guarda los resultados en un archivo.  
+- **`-f subdomains-top1million-110000.txt`** → usa una lista de palabras para fuerza bruta de subdominios.  
 
-> DNS es crítico y sensible a errores de configuración. Prioriza **seguridad** (recursión restringida, AXFR controlado, mínima información expuesta) sin perder la **consistencia** entre primario/secundario.
+🔑 Sirve para **enumerar automáticamente subdominios y registros**. Muy útil cuando el servidor no permite AXFR o para descubrir subdominios adicionales.
+
+---
+
+## 6. Metodología práctica para CTF
+
+1. **Identificar el servicio DNS** con `nmap`:
+```bash
+nmap -p53 -sV <IP_OBJETIVO>
+```
+
+2. **Resolver el dominio**:
+```bash
+dig @<IP_DNS> <dominio>
+```
+
+3. **Descubrir los NS**:
+```bash
+dig @<IP_DNS> NS <dominio>
+```
+
+4. **Intentar transferencia de zona**:
+```bash
+dig @<IP_DNS> AXFR <dominio>
+```
+
+5. **Revisar subdominios descubiertos**:
+```bash
+dig @<IP_DNS> AXFR <subdominio.dominio>
+```
+
+6. **Buscar flags** en los registros TXT:
+```bash
+dig @<IP_DNS> TXT <dominio/subdominio>
+```
+
+---
+
+## 7. Conceptos clave
+- **SOA**: confirma que el servidor es autoritativo.  
+- **NS**: te dice a qué servidor preguntar.  
+- **AXFR**: transferencia de zona → si está habilitada es casi siempre **win**.  
+- **TXT**: suelen esconder las flags.  
+- **ANY**: te puede dar todo de golpe (pero a menudo está restringido).  
+- **CTF tip**: si no ves la flag en el dominio principal, prueba subdominios (`internal.`, `dev.`, etc.).
+
+---
+
+## 8. Resumen ultra-corto de comandos
+```bash
+# Resolver dominio a IP
+dig @IP_DNS dominio +short
+
+# Ver Name Servers
+dig @IP_DNS NS dominio
+
+# Ver cualquier registro disponible
+dig @IP_DNS ANY dominio
+
+# Intentar transferencia de zona
+dig @IP_DNS AXFR dominio
+
+# Ver TXT (para flags)
+dig @IP_DNS TXT dominio
+
+# Transferencia en subdominios
+dig @IP_DNS AXFR sub.dominio
+
+# Enumeración con fuerza bruta de subdominios
+dnsenum --dnsserver <IP_DNS> --enum -p 0 -s 0 -o subdomains.txt -f subdomains-top1million-110000.txt <dominio>
+```
+
+---
+
+## 9. Por qué el DNS es importante en CTF
+- Permite **mapear infraestructura oculta**.  
+- Muchas veces contiene **subdominios sensibles** no visibles en la web.  
+- Los **registros TXT** suelen guardar las **flags**.  
+- Si el **AXFR está abierto**, puedes ver **toda la base de datos DNS del dominio**: es como tener un mapa completo del objetivo.
+
